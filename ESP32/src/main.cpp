@@ -8,17 +8,21 @@ const char* VERSION = "1.0.0";
 
 // Includes
 #include <Arduino.h>
-#include <WiFi.h>
-#include <WebSocketClient.h>
 #include <ArduinoJson.h>
+#include <analogWrite.h>
+#include <WebSocketClient.h>
+#include <WiFi.h>
 #include <config.h>
 //#include <Preferences.h>
 
 WiFiClient client;
-
 WebSocketClient wsClient;
+DynamicJsonDocument webSocketJson(256);
+String webSocketData;
 
-String dataToSend;
+int motorSpeed = 255;
+int turnsPerDay = 640;
+
 
 void initMotor() {
   Serial.println("[info][motor] Initializing motor...");
@@ -83,23 +87,55 @@ void initWebSocket() {
   }
 }
 
-void wsOnMessage(String &data) {
+void wsOnMessage(String &webSocketData) {
   Serial.println("[info][websocket] Data received!");
-  Serial.println(data);
+  serializeJsonPretty(webSocketJson, Serial);
+  Serial.println();
 }
 
-void motorToggle(bool value) {
-  if(value) {
-    Serial.print("[test][motor] Motor ON ");
-    digitalWrite(motorPWM, HIGH);
-    digitalWrite(motorPin1, LOW);
-    digitalWrite(motorPin2, HIGH);
+void motorClockwise() {
+  Serial.println("[cmd][motor] Motor rotating clockwise");
+  digitalWrite(motorPin1, LOW);
+  digitalWrite(motorPin2, HIGH);
+  analogWrite(motorPWM, motorSpeed);
+}
+
+void motorCounterClockwise() {
+  Serial.println("[cmd][motor] Motor rotating counter-clockwise");
+  digitalWrite(motorPin1, HIGH);
+  digitalWrite(motorPin2, LOW);
+  analogWrite(motorPWM, motorSpeed);
+}
+
+void motorUpdateDirection(String direction) {
+  if(direction == "cw") {
+    motorClockwise();
+  } else if(direction == "ccw") {
+    motorCounterClockwise();
+  } else if(direction == "both") {
+    Serial.print("[cmd][motor] Motor rotating both ");
+    motorClockwise();
+    delay(turnsPerDay * 1000);
+    motorCounterClockwise();
+  }
+}
+
+void motorToggle(String value) {
+  if(value == "true" || value == "on" || value == "1") {
+    Serial.print("[cmd][motor] Motor turned on");
+    analogWrite(motorPWM, motorSpeed);
   } else {
-    Serial.print("[test][motor] Motor OFF ");
+    Serial.print("[cmd][motor] Motor turned off");
     digitalWrite(motorPWM, LOW);
     digitalWrite(motorPin1, LOW);
     digitalWrite(motorPin2, LOW);
   }
+}
+
+void motorUpdateSpeed(String motorSpeed) {
+  Serial.print("[cmd][motor] Motor speed: ");
+  Serial.println(motorSpeed.toInt());
+  analogWrite(motorPWM, motorSpeed.toInt());
 }
 
 void command(String &command) {
@@ -109,14 +145,10 @@ void testMotor() {
   Serial.println("[test][motor] Motor testing...");
   // Move the DC motor forward at maximum speed
   Serial.println("[test][motor] Moving CW...");
-  digitalWrite(motorPWM, HIGH);
-  digitalWrite(motorPin1, LOW);
-  digitalWrite(motorPin2, HIGH);
+  motorClockwise();
   delay(5000);
   Serial.println("[test][motor] Moving CCW...");
-  digitalWrite(motorPWM, HIGH);
-  digitalWrite(motorPin1, HIGH);
-  digitalWrite(motorPin2, LOW);
+  motorCounterClockwise();
   delay(5000);
 }
 
@@ -133,21 +165,35 @@ void setup() {
 }
 
 void loop() {
-  String data;
-  StaticJsonDocument<124> doc;
+  // Check if we are connected and there is data to read
   if (client.connected()) {
-    wsClient.getData(data);
-    if (data.length() > 0) {
-      wsOnMessage(data);
+    wsClient.getData(webSocketData);
+    if (webSocketData.length() > 0) {
       // Deserialize JSON
-      deserializeJson(doc, data);
-      const char* type = doc["type"]; // "action"
-      const char* action = doc["action"]; // "update"
-      const char* setting = doc["setting"]; // "status"
-      bool value = doc["value"]; // true
-      motorToggle(value);
+      deserializeJson(webSocketJson, webSocketData);
+      String type    = webSocketJson["type"];
+      String action  = webSocketJson["action"];
+      String setting = webSocketJson["setting"];
+      String value   = webSocketJson["value"];
+      // Print JSON
+      wsOnMessage(webSocketData);
+      // Check if the type, action and setting
+      if(type == "action") {
+        if(action == "update") {
+          if(setting == "motor" || setting == "status") {
+            motorToggle(value);
+          } else if(setting == "speed") {
+            motorUpdateSpeed(value);
+          } else if(setting == "direction") {
+            motorUpdateDirection(value);
+          } else {
+            Serial.println("[error][system] Unknown expression!");
+            serializeJsonPretty(webSocketJson, Serial);
+          }
+        }
+      }
     }
-    data = "";
+    webSocketData = "";
   } else {
     Serial.println("[info][websocket] Device disconnected from server");
     delay(3000);

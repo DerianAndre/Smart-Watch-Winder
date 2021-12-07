@@ -12,9 +12,11 @@
 				<DashboardGrid class="mb-4" :settings="settings" />
 				
 				<h4 class="mb-3">Quick actions</h4>
-				<div class="hstack gap-3">
+				<div class="hstack gap-3 mb-4">
 					<PowerToggle class="btn-lg px-5" />
 				</div>
+				<h4 class="mb-3">Manual action</h4>
+				<InputTest />
 			</div>
 		</div>
 	</div>
