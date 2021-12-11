@@ -9,31 +9,36 @@ const char* VERSION = "1.0.0";
 // Includes
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <analogWrite.h>
 #include <WebSocketClient.h>
 #include <WiFi.h>
+#include <Preferences.h>
 #include <config.h>
-//#include <Preferences.h>
+#include <libSys.h>
 
-WiFiClient client;
-WebSocketClient wsClient;
+// Libraries variables
 DynamicJsonDocument webSocketJson(256);
+WebSocketClient webSocketClient;
+WiFiClient wifiClient;
+Preferences preferences;
+
+// Variables
 String webSocketData;
+String motorDirection;
+bool   motorStatus;
+int    motorSpeed;
+int    turnsPerDay;
 
-int motorSpeed = 255;
-int turnsPerDay = 640;
-
-
+// Functions
 void initMotor() {
   Serial.println("[info][motor] Initializing motor...");
   // Sets the pins as outputs:
-  pinMode(motorPin1, OUTPUT);
-  pinMode(motorPin2, OUTPUT);
-  pinMode(motorPWM, OUTPUT);
-  // Default mode off
-  digitalWrite(motorPWM, LOW);
-  digitalWrite(motorPin1, LOW);
-  digitalWrite(motorPin2, LOW);
+  pinMode(motorIN1, OUTPUT);
+  pinMode(motorIN2, OUTPUT);
+  pinMode(motorEN, OUTPUT);
+  // Configure PWM functionalitites and
+  // Attach the channel to the GPIO to be controlled
+  ledcSetup(pwmChannel, freq, resolution);
+  ledcAttachPin(motorEN, pwmChannel);
   // Serial print
   Serial.println("[info][motor] Motor is ready!");
 }
@@ -65,91 +70,173 @@ void initWiFi() {
 
 void initWebSocket() {
   Serial.println("[info][websocket] Initializing WebSocket...");
-  if(!client.connect(WS_HOST, WS_PORT)) {
+  if(!wifiClient.connect(WS_HOST, WS_PORT)) {
     Serial.println("[error][websocket] Connection failed!");
     return;
   }
   Serial.println("[info][websocket] Connected.");
-  wsClient.path = WS_PATH;
-  wsClient.host = WS_HOST;
-  if (!wsClient.handshake(client)) {
+  webSocketClient.path = WS_PATH;
+  webSocketClient.host = WS_HOST;
+  if (!webSocketClient.handshake(wifiClient)) {
     Serial.println("[error][websocket] Handshake failed!");
     return;
   }
   Serial.println("[info][websocket] Handshake successful!");
   Serial.println("[info][websocket] WebSocket is ready!");
   // Make sure we are connected
-  if (client.connected()) {
-    wsClient.sendData("{\"type\":\"connection\",\"client\":\"esp32\",\"id\":\"ESP32XXXXXXX\"}");
+  if (wifiClient.connected()) {
+    webSocketClient.sendData("{\"type\":\"connection\",\"client\":\"esp32\",\"id\":\"ESP32XXXXXXX\"}");
     Serial.println("[info][websocket] Device connected to the server");
   } else {
     Serial.println("[info][websocket] Device disconnected from server");
   }
 }
 
+void initDone() {
+  Serial.println("[info][system] All systems are ready!");
+  Serial.print("[info][system] Program version: ");
+  Serial.println(VERSION);
+}
+
 void wsOnMessage(String &webSocketData) {
-  Serial.println("[info][websocket] Data received!");
-  serializeJsonPretty(webSocketJson, Serial);
+  Serial.print("[info][websocket] Data received!: ");
+  serializeJson(webSocketJson, Serial);
+  //serializeJsonPretty(webSocketJson, Serial);
   Serial.println();
 }
 
-void motorClockwise() {
+void motorDirectionCW() {
   Serial.println("[cmd][motor] Motor rotating clockwise");
-  digitalWrite(motorPin1, LOW);
-  digitalWrite(motorPin2, HIGH);
-  analogWrite(motorPWM, motorSpeed);
+  digitalWrite(motorIN1, LOW);
+  digitalWrite(motorIN2, HIGH);
 }
 
-void motorCounterClockwise() {
+void motorDirectionCCW() {
   Serial.println("[cmd][motor] Motor rotating counter-clockwise");
-  digitalWrite(motorPin1, HIGH);
-  digitalWrite(motorPin2, LOW);
-  analogWrite(motorPWM, motorSpeed);
+  digitalWrite(motorIN1, HIGH);
+  digitalWrite(motorIN2, LOW);
 }
 
-void motorUpdateDirection(String direction) {
-  if(direction == "cw") {
-    motorClockwise();
-  } else if(direction == "ccw") {
-    motorCounterClockwise();
-  } else if(direction == "both") {
-    Serial.print("[cmd][motor] Motor rotating both ");
-    motorClockwise();
-    delay(turnsPerDay * 1000);
-    motorCounterClockwise();
+void motorDirectionBOTH() {
+  Serial.println("[cmd][motor] Motor rotating both ");
+  motorDirectionCW();
+  delay(turnsPerDay * 1000);
+  motorDirectionCCW();
+}
+
+void motorUpdateDirection(String newMotorDirection) {
+  // Clockwise
+  if(newMotorDirection == "cw") {
+    motorDirectionCW();
+  }
+  // Counter clockwise
+  else if(newMotorDirection == "ccw") {
+    motorDirectionCCW();
+  }
+  // Both
+  else if(newMotorDirection == "both") {
+    motorDirectionBOTH();
   }
 }
 
-void motorToggle(String value) {
-  if(value == "true" || value == "on" || value == "1") {
-    Serial.print("[cmd][motor] Motor turned on");
-    analogWrite(motorPWM, motorSpeed);
+void motorUpdateStatus(bool newMotorStatus) {
+  if(newMotorStatus) {
+    Serial.println("[cmd][motor] Motor turned on");
+    digitalWrite(motorEN, HIGH);
+    ledcWrite(pwmChannel, motorSpeed);
   } else {
-    Serial.print("[cmd][motor] Motor turned off");
-    digitalWrite(motorPWM, LOW);
-    digitalWrite(motorPin1, LOW);
-    digitalWrite(motorPin2, LOW);
+    Serial.println("[cmd][motor] Motor turned off");
+    digitalWrite(motorEN, LOW);
+    ledcWrite(pwmChannel, 0);
   }
 }
 
-void motorUpdateSpeed(String motorSpeed) {
-  Serial.print("[cmd][motor] Motor speed: ");
-  Serial.println(motorSpeed.toInt());
-  analogWrite(motorPWM, motorSpeed.toInt());
+void motorUpdateSpeed(int newMotorSpeed) {
+  Serial.print("[cmd][motor] Motor speed is ");
+  Serial.println(newMotorSpeed);
+  // Add preferences update to save state to memory
+  if(!motorStatus) return;
+  ledcWrite(pwmChannel, newMotorSpeed);
 }
 
 void command(String &command) {
+
 }
 
 void testMotor() {
   Serial.println("[test][motor] Motor testing...");
   // Move the DC motor forward at maximum speed
   Serial.println("[test][motor] Moving CW...");
-  motorClockwise();
+  motorDirectionCW();
   delay(5000);
   Serial.println("[test][motor] Moving CCW...");
-  motorCounterClockwise();
+  motorDirectionCCW();
   delay(5000);
+}
+
+void updateSetting(String setting, String value) {
+  preferences.begin("settings", false);
+  Serial.print("[info][settings] Updating setting: ");
+  Serial.print(setting);
+  Serial.print(" to ");
+  Serial.println(value);
+  // Motor status
+  if(setting == "motorStatus") {
+    bool valueBoolean = value == "true" ? true : false;
+    motorStatus = valueBoolean;
+    preferences.putBool("motorStatus", valueBoolean);
+    motorUpdateStatus(valueBoolean);
+  }
+  // Motor speed
+  else if(setting == "motorSpeed") {
+    int valueInt = value.toInt();
+    motorSpeed = valueInt;
+    preferences.putInt("motorSpeed", valueInt);
+    motorUpdateSpeed(valueInt);
+  }
+  // Motor direction
+  else if(setting == "motorDirection") {
+    String valueString = value;
+    motorDirection = valueString;
+    preferences.putString("motorDirection", valueString);
+    motorUpdateDirection(value);
+  }
+  // Turns per day
+  else if(setting == "turnsPerDay") {
+    int valueInt = value.toInt();
+    turnsPerDay = valueInt;
+    preferences.putInt("turnsPerDay", valueInt);
+  }
+  // Unknown setting
+  else {
+    Serial.print("[error][system] Unknown setting: ");
+    Serial.println(setting);
+  }
+  // End
+  preferences.end();
+}
+
+void loadSettings() {
+  preferences.begin("settings", false);
+  Serial.println("[info][settings] Loading settings...");
+  motorDirection = preferences.getString("motorDirection", defaultMotorDirection);
+  motorStatus    = preferences.getBool("motorStatus", defaultMotorStatus);
+  motorSpeed     = preferences.getInt("motorSpeed", defaultMotorSpeed);
+  turnsPerDay    = preferences.getInt("turnsPerDay", defaultTurnsPerDay);
+  preferences.end();
+
+  Serial.print("[info][settings] Motor direction: ");
+  Serial.println(motorDirection);
+  Serial.print("[info][settings] Motor status: ");
+  Serial.println(motorStatus);
+  Serial.print("[info][settings] Motor speed: ");
+  Serial.println(motorSpeed);
+  Serial.print("[info][settings] Turns per day: ");
+  Serial.println(turnsPerDay);
+
+  motorUpdateStatus(motorStatus);
+  motorUpdateDirection(motorDirection);
+  motorUpdateSpeed(motorSpeed);
 }
 
 void setup() {
@@ -158,16 +245,15 @@ void setup() {
   initMotor();
   initWiFi();
   initWebSocket();
-  Serial.println("[info][system] All systems are ready!");
-  Serial.print("[info][system] Version: ");
-  Serial.println(VERSION);
-  //testMotor();
+  initDone();
+
+  loadSettings();
 }
 
 void loop() {
   // Check if we are connected and there is data to read
-  if (client.connected()) {
-    wsClient.getData(webSocketData);
+  if (wifiClient.connected()) {
+    webSocketClient.getData(webSocketData);
     if (webSocketData.length() > 0) {
       // Deserialize JSON
       deserializeJson(webSocketJson, webSocketData);
@@ -179,17 +265,17 @@ void loop() {
       wsOnMessage(webSocketData);
       // Check if the type, action and setting
       if(type == "action") {
+        // Update
         if(action == "update") {
-          if(setting == "motor" || setting == "status") {
-            motorToggle(value);
-          } else if(setting == "speed") {
-            motorUpdateSpeed(value);
-          } else if(setting == "direction") {
-            motorUpdateDirection(value);
-          } else {
-            Serial.println("[error][system] Unknown expression!");
-            serializeJsonPretty(webSocketJson, Serial);
-          }
+          updateSetting(setting, value);
+        }
+        // Restart
+        if(action == "restart" || action == "reboot") {
+          sysRestart();
+        }
+        // Sleep
+        if(action == "sleep") {
+          sysSleep();
         }
       }
     }
