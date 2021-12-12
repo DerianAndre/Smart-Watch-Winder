@@ -16,19 +16,68 @@ const char* VERSION = "1.0.0";
 #include <libSys.h>
 
 // Libraries variables
-DynamicJsonDocument webSocketJson(256);
+DynamicJsonDocument jsonConnection(128);
+DynamicJsonDocument jsonSettings(1024);
+DynamicJsonDocument jsonWebSocket(512);
 WebSocketClient webSocketClient;
 WiFiClient wifiClient;
 Preferences preferences;
 
 // Variables
 String webSocketData;
+String controlMode;
 String motorDirection;
 bool   motorStatus;
 int    motorSpeed;
+int    turnsCycles;
 int    turnsPerDay;
+int    turnsPerHour;
 
 // Functions
+
+void wsOnMessage(String &webSocketData) {
+  Serial.print("[info][websocket] Data received!: ");
+  serializeJson(jsonWebSocket, Serial);
+  //serializeJsonPretty(jsonWebSocket, Serial);
+  Serial.println();
+}
+
+void wsSendMessage(String message) {
+  Serial.print("[info][websocket] Sending data: ");
+  Serial.println(message);
+  webSocketClient.sendData(message);
+}
+
+void sendConnection() {
+  String jsonConnectionString;
+  jsonSettings["type"]           = "connection";
+  jsonSettings["client"]         = "esp32";
+  jsonSettings["id"]             = WS_ID;
+  serializeJson(jsonSettings, jsonConnectionString);
+  // Print
+  Serial.println("[info][websocket] Sending connection...");
+  // Send
+  wsSendMessage(jsonConnectionString);
+}
+
+void sendSettings() {
+  String jsonSettingsString;
+  jsonSettings["type"]           = "settings";
+  jsonSettings["id"]             = WS_ID;
+  jsonSettings["controlMode"]    = controlMode;
+  jsonSettings["motorDirection"] = motorDirection;
+  jsonSettings["motorSpeed"]     = motorSpeed;
+  jsonSettings["motorStatus"]    = motorStatus;
+  jsonSettings["turnsCycles"]    = turnsCycles;
+  jsonSettings["turnsPerDay"]    = turnsPerDay;
+  jsonSettings["turnsPerHour"]   = turnsPerHour;
+  serializeJson(jsonSettings, jsonSettingsString);
+  // Print
+  Serial.println("[info][websocket] Sending settings...");
+  // Send
+  wsSendMessage(jsonSettingsString);
+}
+
 void initMotor() {
   Serial.println("[info][motor] Initializing motor...");
   // Sets the pins as outputs:
@@ -85,10 +134,18 @@ void initWebSocket() {
   Serial.println("[info][websocket] WebSocket is ready!");
   // Make sure we are connected
   if (wifiClient.connected()) {
-    webSocketClient.sendData("{\"type\":\"connection\",\"client\":\"esp32\",\"id\":\"ESP32XXXXXXX\"}");
-    Serial.println("[info][websocket] Device connected to the server");
+    // Print
+    Serial.println("[info][websocket] Device connected to the websocket server");
+    // Send a message to the server
+    sendConnection();
   } else {
-    Serial.println("[info][websocket] Device disconnected from server");
+    // Print error
+    Serial.println("[error][websocket] Device disconnected from the websocket server");
+    // Reconnect
+    Serial.println("[info][websocket] Reconnecting...");
+    initWebSocket();
+    // Wait
+    delay(3000);
   }
 }
 
@@ -96,13 +153,6 @@ void initDone() {
   Serial.println("[info][system] All systems are ready!");
   Serial.print("[info][system] Program version: ");
   Serial.println(VERSION);
-}
-
-void wsOnMessage(String &webSocketData) {
-  Serial.print("[info][websocket] Data received!: ");
-  serializeJson(webSocketJson, Serial);
-  //serializeJsonPretty(webSocketJson, Serial);
-  Serial.println();
 }
 
 void motorDirectionCW() {
@@ -180,8 +230,14 @@ void updateSetting(String setting, String value) {
   Serial.print(setting);
   Serial.print(" to ");
   Serial.println(value);
+  // Control Mode
+  if(setting == "controlMode") {
+    String valueString = value;
+    controlMode = valueString;
+    preferences.putString("controlMode", valueString);
+  }
   // Motor status
-  if(setting == "motorStatus") {
+  else if(setting == "motorStatus") {
     bool valueBoolean = value == "true" ? true : false;
     motorStatus = valueBoolean;
     preferences.putBool("motorStatus", valueBoolean);
@@ -207,6 +263,18 @@ void updateSetting(String setting, String value) {
     turnsPerDay = valueInt;
     preferences.putInt("turnsPerDay", valueInt);
   }
+  // Turns per hour
+  else if(setting == "turnsPerHour") {
+    int valueInt = value.toInt();
+    turnsPerHour = valueInt;
+    preferences.putInt("turnsPerHour", valueInt);
+  }
+  // Turns Cycles
+  else if(setting == "turnsCycles") {
+    int valueInt = value.toInt();
+    turnsCycles = valueInt;
+    preferences.putInt("turnsCycles", valueInt);
+  }
   // Unknown setting
   else {
     Serial.print("[error][system] Unknown setting: ");
@@ -214,30 +282,41 @@ void updateSetting(String setting, String value) {
   }
   // End
   preferences.end();
+  sendSettings();
 }
 
 void loadSettings() {
   preferences.begin("settings", false);
   Serial.println("[info][settings] Loading settings...");
-  motorDirection = preferences.getString("motorDirection", defaultMotorDirection);
-  motorStatus    = preferences.getBool("motorStatus", defaultMotorStatus);
-  motorSpeed     = preferences.getInt("motorSpeed", defaultMotorSpeed);
-  turnsPerDay    = preferences.getInt("turnsPerDay", defaultTurnsPerDay);
+  controlMode=    preferences.getString("controlMode", defaultControlMode);
+  motorDirection= preferences.getString("motorDirection", defaultMotorDirection);
+  motorStatus=    preferences.getBool("motorStatus", defaultMotorStatus);
+  motorSpeed=     preferences.getInt("motorSpeed", defaultMotorSpeed);
+  turnsCycles=    preferences.getInt("turnsCycles", defaultTurnsCycles);
+  turnsPerDay=    preferences.getInt("turnsPerDay", defaultTurnsPerDay);
+  turnsPerHour=   preferences.getInt("turnsPerHour", defaultTurnsPerHour);
   preferences.end();
 
+  Serial.print("[info][settings] Control mode: ");
+  Serial.println(controlMode);
   Serial.print("[info][settings] Motor direction: ");
   Serial.println(motorDirection);
   Serial.print("[info][settings] Motor status: ");
   Serial.println(motorStatus);
   Serial.print("[info][settings] Motor speed: ");
   Serial.println(motorSpeed);
+  Serial.print("[info][settings] Turns cycles: ");
+  Serial.println(turnsCycles);
   Serial.print("[info][settings] Turns per day: ");
   Serial.println(turnsPerDay);
+  Serial.print("[info][settings] Turns per hour: ");
+  Serial.println(turnsPerHour);
 
   motorUpdateStatus(motorStatus);
   motorUpdateDirection(motorDirection);
   motorUpdateSpeed(motorSpeed);
 }
+
 
 void setup() {
   Serial.begin(115200);
@@ -246,8 +325,8 @@ void setup() {
   initWiFi();
   initWebSocket();
   initDone();
-
   loadSettings();
+  sendSettings();
 }
 
 void loop() {
@@ -256,13 +335,17 @@ void loop() {
     webSocketClient.getData(webSocketData);
     if (webSocketData.length() > 0) {
       // Deserialize JSON
-      deserializeJson(webSocketJson, webSocketData);
-      String type    = webSocketJson["type"];
-      String action  = webSocketJson["action"];
-      String setting = webSocketJson["setting"];
-      String value   = webSocketJson["value"];
+      deserializeJson(jsonWebSocket, webSocketData);
+      String type    = jsonWebSocket["type"];
+      String id      = jsonWebSocket["id"];
+      String request = jsonWebSocket["request"];
+      String action  = jsonWebSocket["action"];
+      String setting = jsonWebSocket["setting"];
+      String value   = jsonWebSocket["value"];
       // Print JSON
-      wsOnMessage(webSocketData);
+      if(type =="actiion") {
+        wsOnMessage(webSocketData);
+      }
       // Check if the type, action and setting
       if(type == "action") {
         // Update
@@ -278,11 +361,17 @@ void loop() {
           sysSleep();
         }
       }
+      else if(type == "request") {
+        // Send settings
+        if(request == "settings") {
+          sendSettings();
+        }
+      }
     }
     webSocketData = "";
   } else {
     Serial.println("[info][websocket] Device disconnected from server");
-    delay(3000);
+    delay(5000);
   }
   delay(500);
 }

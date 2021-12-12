@@ -8,12 +8,12 @@
 				<p class="lead mb-4">
 					This is a simple overview of the Watch Winder. See all your settings in a glance.
 				</p>
-				{{ settings.connection }}
-				<DashboardGrid class="mb-4" :settings="settings" />
+				
+				<DashboardGrid class="mb-4" :settings="settings" :key="counter"/>
 				
 				<h4 class="mb-3">Quick actions</h4>
 				<div class="hstack gap-3 mb-4">
-					<PowerToggle class="btn-lg px-5" />
+					<PowerToggle class="btn-lg px-5" :settings="settings"/>
 				</div>
 				<h4 class="mb-3">Manual action</h4>
 				<InputTest />
@@ -26,17 +26,19 @@
 	export default {
 		data() {
 			return {
+				counter: 0,
 				settings: {
 					connection: false,
-					status: false,
-					mode: 'automatic',
-					direction: 'cw',
-					turnsSpeed: 1,
-					turnsPerSecond: 60,
-					turnsPerHour: 25,
-					turnsPerDay: 640,
-					cycles: 24,
-					cyclesSleepTime: 1,
+					controlMode: null,
+					motorStatus: null,
+					motorSpeed: null,
+					motorDirection: null,
+					turnsSpeed: null,
+					turnsPerSecond: null,
+					turnsPerHour: null,
+					turnsPerDay: null,
+					cycles: null,
+					cyclesSleepTime: null,
 				}
 			}
 		},
@@ -45,13 +47,10 @@
 			let ws = new WebSocket(process.env.wsUrl);
 
 			ws.onopen = function(e) {
-				$this.settings.connection = true;
 				let data = {
-					type: "id",
-					client: {
-						id: "SWWF1231251243",
-						type: "frontend",
-					}
+					type: "connection",
+					id: "SWWF1231251243",
+					client: "frontend",
 				}
 				ws.send(JSON.stringify(data));
 			};
@@ -62,8 +61,21 @@
 			
 			ws.onmessage = function(e) {
 				let message = JSON.parse(e.data);
+				$this.counter++;
+				console.log(message);
 				if(message.type == 'action') {
-					console.log(message);
+					// console.log(message);
+				}
+				if(message.type == 'settings') {
+					$this.settings.connection = true;
+					$this.settings.id = message.id;
+					$this.settings.controlMode = message.controlMode;
+					$this.settings.motorDirection = message.motorDirection;
+					$this.settings.motorStatus = message.motorStatus;
+					$this.settings.motorSpeed = message.motorSpeed;
+					$this.settings.turnsCycles = message.turnsCycles;
+					$this.settings.turnsPerDay = message.turnsPerDay;
+					$this.settings.turnsPerHour = message.turnsPerHour;
 				}
 			};
 		},

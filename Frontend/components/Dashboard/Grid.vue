@@ -13,40 +13,41 @@
 			return {
 				items: [
 					{
-						slug: 'connection',
-						icon: 'link',
+						slug:  'connection',
+						icon:  'link',
 						class: this.settings.connection ? 'bg-success border-success text-light' : 'bg-danger border-danger text-light',
-						text: this.settings.connection ? 'On' : 'Off',
+						text:  this.settings.connection ? 'On':'Off',
 					}, {
-						slug: 'status',
-						icon: 'power',
-						class: this.settings.status ? 'bg-success border-success text-light' : 'bg-danger border-danger text-light',
-						text: this.settings.status ? 'On' : 'Off',
+						slug:  'controlMode',
+						icon:  this.settings.controlMode === 'automatic' ? 'gear': 'sliders',
+						class: this.settings.controlMode ? (this.settings.controlMode === 'automatic' ? 'bg-primary border-primary text-light' : 'bg-secondary border-secondary text-light') : null,
+						text:  this.settings.controlMode ? this.$i18n.t(`settings.modes.${this.settings.controlMode}`) : '-',
 					}, {
-						slug: 'mode',
-						icon: this.settings.mode === 'automatic' ? 'gear' : 'sliders',
-						text: this.$i18n.t(`settings.modes.${this.settings.mode}`),
+						slug:  'motorStatus',
+						icon:  'power',
+						class: this.settings.motorStatus != null ? (this.settings.motorStatus == true ? 'bg-success border-success text-light': 'bg-danger border-danger text-light') : null,
+						text:  this.settings.motorStatus != null ? (this.settings.motorStatus == true ? 'On': 'Off') : '-',
 					}, {
-						slug: 'direction',
+						slug: 'motorDirection',
 						icon: this.iconDirection(),
-						text: this.$i18n.t(`settings.directions.${this.settings.direction}`),
+						text: this.settings.motorDirection ? this.$i18n.t(`settings.directions.${this.settings.motorDirection}`) : '-',
 					}, {
-						slug: 'cycles',
-						icon: 'recycle',
-						text: this.settings.cycles,
-					}, {
-						slug: 'turnsSpeed',
+						slug: 'motorSpeed',
 						icon: 'speedometer2',
-						text: this.settings.turnsSpeed,
+						text: this.settings.motorSpeed ? this.settings.motorSpeed : '-',
 					}, {
-						slug: 'turnsPerDay',
-						icon: 'calendar',
-						text: this.settings.turnsPerDay,
+						slug: 'turnsCycles',
+						icon: 'recycle',
+						text: this.settings.turnsCycles ? this.settings.turnsCycles : '-',
 					}, {
 						slug: 'turnsPerHour',
 						icon: 'clock',
-						text: this.settings.turnsPerHour,
-					}
+						text: this.settings.turnsPerHour ? this.settings.turnsPerHour : '-',
+					}, {
+						slug: 'turnsPerDay',
+						icon: 'calendar',
+						text: this.settings.controlMode ? (this.settings.controlMode === 'automatic' ? this.settings.turnsPerDay : this.settings.turnsCycles * this.settings.turnsPerHour) : '-',
+					},
 				],
 			}
 		},
@@ -58,7 +59,7 @@
 					'both': 'arrow-repeat',
 					'shuffle': 'shuffle',
 				};
-				return types[this.settings.direction];
+				return this.settings.motorDirection ? types[this.settings.motorDirection] : 'question-circle';
 			}
 		}
 	}

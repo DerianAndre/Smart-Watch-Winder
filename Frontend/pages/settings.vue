@@ -46,7 +46,7 @@
 										{{ item.movement }}
 									</td>
 									<td>
-										{{ item.direction }}
+										{{ item.motorDirection }}
 									</td>
 									<td>
 										{{ item.tpd }}
@@ -66,28 +66,28 @@
 					<h4>
 						Mode
 					</h4>
-					<div class="btn-group mb-3" role="group" aria-label="Winder mode">
-						<input type="radio" class="btn-check" name="mode" v-model="settings.mode" id="automatic" value="automatic" autocomplete="off">
+					<div class="btn-group mb-3" role="group" aria-label="Winder Control Mode">
+						<input type="radio" class="btn-check" name="controlMode" v-model="settings.controlMode" id="automatic" value="automatic" autocomplete="off">
 						<label class="d-flex align-items-center btn btn-outline-dark" for="automatic">
 							<i class="fw-bolder bi bi-gear"></i>
 							<span class="d-none d-sm-block ms-2 small">Automatic</span>
 						</label>
 
-						<input type="radio" class="btn-check" name="mode" v-model="settings.mode" id="manual" value="manual" autocomplete="off">
+						<input type="radio" class="btn-check" name="controlMode" v-model="settings.controlMode" id="manual" value="manual" autocomplete="off">
 						<label class="d-flex align-items-center btn btn-outline-dark" for="manual">
 							<i class="fw-bolder bi bi-sliders"></i>
 							<span class="d-none d-sm-block ms-2 small">Manual</span>
 						</label>
 					</div>
 					<div>
-						<div v-if="settings.mode == 'automatic'">
+						<div v-if="settings.controlMode == 'automatic'">
 							<h5>
 								Automatic settings
 							</h5>
 							<div class="mb-3">
-								<label for="tpd" class="form-label">Turns per day (TPD)</label>
-								<input type="number" class="form-control" id="tpd" aria-describedby="tpdHelp" v-model="settings.tpd">
-								<div id="tpdHelp" class="form-text">
+								<label for="turnsPerDay" class="form-label">Turns per day (TPD)</label>
+								<input type="number" class="form-control" id="tpd" aria-describedby="turnsPerDayHelp" v-model="settings.turnsPerDay">
+								<div id="turnsPerDayHelp" class="form-text">
 									That is the number of turns of the internal rotor that is required each day to keep the particular watch wound.
 								</div>
 							</div>
@@ -98,25 +98,25 @@
 							</h5>
 							<div class="row row-cols-1 row-cols-md-3">
 								<div class="col mb-3">
-									<label for="tpd" class="form-label">Turns per hour (TPH)</label>
-									<input type="number" class="form-control" id="tph" aria-describedby="tphHelp" v-model="settings.tph">
-									<div id="tpdHelp" class="form-text">
+									<label for="turnsPerHour" class="form-label">Turns per hour (TPH)</label>
+									<input type="number" class="form-control" id="turnsPerHour" aria-describedby="turnsPerHourHelp" v-model="settings.turnsPerHour">
+									<div id="turnsPerHourHelp" class="form-text">
 										That is the number of turns of the internal rotor that is required each day to keep the particular watch wound.
 									</div>
 								</div>
 								<div class="col mb-3">
-									<label for="cycles" class="form-label">Cycles</label>
-									<input type="number" class="form-control" id="cycles" aria-describedby="cyclesHelp" v-model="settings.cycles">
-									<div id="cyclesHelp" class="form-text">
+									<label for="turnsCycles" class="form-label">Cycles</label>
+									<input type="number" class="form-control" id="turnsCycles" aria-describedby="turnsCyclesHelp" v-model="settings.turnsCycles">
+									<div id="turnsCyclesHelp" class="form-text">
 										The number of cycles that the winder will do.
 									</div>
 								</div>
 							</div>
 
 							<div class="mb-3">
-								<label for="tpd" class="form-label">Turns per day (TPD)</label>
-								<input type="number" class="form-control" id="tpd" aria-describedby="tpdHelp" :value="settings.tph * settings.cycles" disabled>
-								<div id="tpdHelp" class="form-text">
+								<label for="turnsPerDay" class="form-label">Turns per day (TPD)</label>
+								<input type="number" class="form-control" id="turnsPerDay" aria-describedby="turnsPerDayHelp" :value="settings.turnsPerHour * settings.turnsCycles" disabled>
+								<div id="tpurnsPerDayelp" class="form-text">
 									That is the number of turns of the internal rotor that is required each day to keep the particular watch wound.
 								</div>
 							</div>
@@ -129,8 +129,8 @@
 						Advanced settings
 					</h4>
 					<div class="mb-3">
-						<label for="tpd" class="form-label">Cycle sleep time</label>
-						<input type="number" class="form-control" id="cst" v-model="settings.cst" aria-describedby="cstHelp">
+						<label for="tpd" class="form-label">Cycles sleep time</label>
+						<input type="number" class="form-control" id="cst" v-model="settings.cyclesSleepTime" aria-describedby="cstHelp">
 						<div id="cstHelp" class="form-text">
 							The time in hours that the winder will sleep after each cycle.
 						</div>
@@ -141,8 +141,8 @@
 					<h4>
 						Direction
 					</h4>
-					<div class="btn-group" role="group" aria-label="Winder direction">
-						<input type="radio" class="btn-check" name="direction" v-model="settings.direction" id="both" value="both" autocomplete="off" checked>
+					<div class="btn-group" role="group" aria-label="Winder motorDirection">
+						<input type="radio" class="btn-check" name="motorDirection" v-model="settings.motorDirection" id="both" value="both" autocomplete="off" checked>
 						<label class="d-flex align-items-center btn btn-outline-dark" for="both">
 							<i class="fw-bolder bi bi-arrow-repeat"></i>
 							<span class="d-none d-sm-block ms-2 small">
@@ -150,7 +150,7 @@
 							</span>
 						</label>
 
-						<input type="radio" class="btn-check" name="direction" v-model="settings.direction" id="cw" value="cw" autocomplete="off">
+						<input type="radio" class="btn-check" name="motorDirection" v-model="settings.motorDirection" id="cw" value="cw" autocomplete="off">
 						<label class="d-flex align-items-center btn btn-outline-dark" for="cw">
 							<i class="fw-bolder bi bi-arrow-clockwise"></i>
 							<span class="d-none d-sm-block ms-2 small">
@@ -158,7 +158,7 @@
 							</span>
 						</label>
 
-						<input type="radio" class="btn-check" name="direction" v-model="settings.direction" id="ccw" value="ccw" autocomplete="off">
+						<input type="radio" class="btn-check" name="motorDirection" v-model="settings.motorDirection" id="ccw" value="ccw" autocomplete="off">
 						<label class="d-flex align-items-center btn btn-outline-dark" for="ccw">
 							<i class="fw-bolder bi bi-arrow-counterclockwise"></i>
 							<span class="d-none d-sm-block ms-2 small">
@@ -186,13 +186,13 @@
 		data() {
 			return {
 				settings: {
-					status: false,
-					mode: 'automatic',
-					direction: 'cw',
-					tpd: 640,
-					tph: 25,
-					cycles: 24,
-					cst: 1,
+					controlMode: 'automatic',
+					motorStatus: false,
+					motorDirection: 'cw',
+					turnsPerDay: 640,
+					turnsPerHour: 25,
+					turnsCycles: 24,
+					cyclesSleepTime: 1,
 				},
 				search: {
 					database: database,
@@ -214,10 +214,10 @@
 			setData(item) {
 				this.search.results = [];
 				this.search.query = '';
-				this.settings.cycles = item.cycles || 24;
-				this.settings.tpd = item.tpd.split('-') ? item.tpd.split('-')[0] : item.tpd;
-				this.settings.tph = this.settings.tpd / this.settings.cycles;
-				this.settings.direction = item.direction;
+				this.settings.turnsCycles = item.cycles || 24;
+				this.settings.turnsPerDay = item.tpd.split('-') ? item.tpd.split('-')[0] : item.tpd;
+				this.settings.turnsPerHour = this.settings.turnsPerDay / this.settings.turnsCycles;
+				this.settings.motorDirection = item.motorDirection;
 			}
 		},
 	}
