@@ -8,7 +8,7 @@
 				<p class="lead mb-4">
 					Another open-source handcrafted project made with 🧠 by <a href="https://github.com/DerianAndre">Derian André</a>
 				</p>
-				<a class="btn btn-dark px-4" href="https://github.com/DerianAndre/WatchWinder">
+				<a class="btn btn-dark px-4" href="https://github.com/DerianAndre/Smart-Watch-Winder">
 					<i class="bi bi-github me-2" />
 					Github Repository
 				</a>
