@@ -133,17 +133,17 @@ void initWebSocket() {
     Serial.println("[error][websocket] Handshake failed!");
     return;
   }
-  Serial.println("[info][websocket] Handshake successful!");
-  Serial.println("[info][websocket] WebSocket is ready!");
   // Make sure we are connected
   if (wifiClient.connected()) {
     // Print
-    Serial.println("[info][websocket] Device connected to the websocket server");
+    Serial.println("[info][websocket] Handshake successful!");
+    Serial.println("[info][websocket] Device connected to the WebSocket server");
+    Serial.println("[info][websocket] WebSocket is ready!");
     // Send a message to the server
     wsSendConnection();
   } else {
     // Print error
-    Serial.println("[error][websocket] Device disconnected from the websocket server");
+    Serial.println("[error][websocket] WebSocket connection faild!");
     // Reconnect
     Serial.println("[info][websocket] Reconnecting...");
     initWebSocket();
@@ -383,7 +383,10 @@ void loop() {
     }
     webSocketData = "";
   } else {
-    Serial.println("[info][websocket] Device disconnected from server");
+    Serial.println("[error][websocket] Device disconnected from the WebSocket server!");
+    delay(1000);
+    Serial.println("[info][websocket] Reconnecting...");
+    initWebSocket();
     delay(5000);
   }
   delay(500);
