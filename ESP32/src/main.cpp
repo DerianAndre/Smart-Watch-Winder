@@ -81,13 +81,13 @@ void sendSettings() {
 void initMotor() {
   Serial.println("[info][motor] Initializing motor...");
   // Sets the pins as outputs:
-  pinMode(motorIN1, OUTPUT);
-  pinMode(motorIN2, OUTPUT);
-  pinMode(motorEN, OUTPUT);
+  pinMode(motorIN1A, OUTPUT);
+  pinMode(motorIN1B, OUTPUT);
+  pinMode(motorEN1, OUTPUT);
   // Configure PWM functionalitites and
   // Attach the channel to the GPIO to be controlled
   ledcSetup(pwmChannel, freq, resolution);
-  ledcAttachPin(motorEN, pwmChannel);
+  ledcAttachPin(motorEN1, pwmChannel);
   // Serial print
   Serial.println("[info][motor] Motor is ready!");
 }
@@ -157,14 +157,14 @@ void initDone() {
 
 void motorDirectionCW() {
   Serial.println("[cmd][motor] Motor rotating clockwise");
-  digitalWrite(motorIN1, LOW);
-  digitalWrite(motorIN2, HIGH);
+  digitalWrite(motorIN1A, LOW);
+  digitalWrite(motorIN1B, HIGH);
 }
 
 void motorDirectionCCW() {
   Serial.println("[cmd][motor] Motor rotating counter-clockwise");
-  digitalWrite(motorIN1, HIGH);
-  digitalWrite(motorIN2, LOW);
+  digitalWrite(motorIN1A, HIGH);
+  digitalWrite(motorIN1B, LOW);
 }
 
 void motorDirectionBOTH() {
@@ -192,11 +192,11 @@ void motorUpdateDirection(String newMotorDirection) {
 void motorUpdateStatus(bool newMotorStatus) {
   if(newMotorStatus) {
     Serial.println("[cmd][motor] Motor turned on");
-    digitalWrite(motorEN, HIGH);
+    digitalWrite(motorEN1, HIGH);
     ledcWrite(pwmChannel, motorSpeed);
   } else {
     Serial.println("[cmd][motor] Motor turned off");
-    digitalWrite(motorEN, LOW);
+    digitalWrite(motorEN1, LOW);
     ledcWrite(pwmChannel, 0);
   }
 }
