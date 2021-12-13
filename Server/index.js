@@ -4,9 +4,9 @@ const websocket = require('express-ws')(app);
 
 app.ws('/', function(wss, req) {
     console.log("[info][websocket] New connection has opened!");
-    console.log(websocket.getWss().clients);
-
+    //console.log(websocket.getWss().clients);
     wss.on('connection', function connection(ws, req) {
+        // TODO: Add ID to WebSocketServer client list
         //ws.id = wss.getUniqueID();
         wss.clients.forEach(function each(client) {
             //console.log('Client.ID: ' + client.id);

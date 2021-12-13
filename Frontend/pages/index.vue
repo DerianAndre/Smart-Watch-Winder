@@ -32,6 +32,8 @@
 					controlMode: null,
 					motorStatus: null,
 					motorSpeed: null,
+					motorSpeedMin: null,
+					motorSpeedMax: null,
 					motorDirection: null,
 					turnsSpeed: null,
 					turnsPerSecond: null,
@@ -73,6 +75,8 @@
 					$this.settings.motorDirection = message.motorDirection;
 					$this.settings.motorStatus = message.motorStatus;
 					$this.settings.motorSpeed = message.motorSpeed;
+					$this.settings.motorSpeedMin = message.motorSpeedMin;
+					$this.settings.motorSpeedMax = message.motorSpeedMax;
 					$this.settings.turnsCycles = message.turnsCycles;
 					$this.settings.turnsPerDay = message.turnsPerDay;
 					$this.settings.turnsPerHour = message.turnsPerHour;

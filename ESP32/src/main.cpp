@@ -29,12 +29,13 @@ String controlMode;
 String motorDirection;
 bool   motorStatus;
 int    motorSpeed;
+int    motorSpeedMin = pwmSpeedMin;
+int    motorSpeedMax = pwmSpeedMax;
 int    turnsCycles;
 int    turnsPerDay;
 int    turnsPerHour;
 
 // Functions
-
 void wsOnMessage(String &webSocketData) {
   Serial.print("[info][websocket] Data received!: ");
   serializeJson(jsonWebSocket, Serial);
@@ -48,7 +49,7 @@ void wsSendMessage(String message) {
   webSocketClient.sendData(message);
 }
 
-void sendConnection() {
+void wsSendConnection() {
   String jsonConnectionString;
   jsonSettings["type"]           = "connection";
   jsonSettings["client"]         = "esp32";
@@ -60,13 +61,15 @@ void sendConnection() {
   wsSendMessage(jsonConnectionString);
 }
 
-void sendSettings() {
+void wsSendSettings() {
   String jsonSettingsString;
   jsonSettings["type"]           = "settings";
   jsonSettings["id"]             = WS_ID;
   jsonSettings["controlMode"]    = controlMode;
   jsonSettings["motorDirection"] = motorDirection;
   jsonSettings["motorSpeed"]     = motorSpeed;
+  jsonSettings["motorSpeedMin"]  = motorSpeedMin;
+  jsonSettings["motorSpeedMax"]  = motorSpeedMax;
   jsonSettings["motorStatus"]    = motorStatus;
   jsonSettings["turnsCycles"]    = turnsCycles;
   jsonSettings["turnsPerDay"]    = turnsPerDay;
@@ -83,7 +86,7 @@ void initMotor() {
   // Sets the pins as outputs:
   pinMode(motorIN1A, OUTPUT);
   pinMode(motorIN1B, OUTPUT);
-  pinMode(motorEN1, OUTPUT);
+  pinMode(motorEN1,  OUTPUT);
   // Configure PWM functionalitites and
   // Attach the channel to the GPIO to be controlled
   ledcSetup(pwmChannel, freq, resolution);
@@ -137,7 +140,7 @@ void initWebSocket() {
     // Print
     Serial.println("[info][websocket] Device connected to the websocket server");
     // Send a message to the server
-    sendConnection();
+    wsSendConnection();
   } else {
     // Print error
     Serial.println("[error][websocket] Device disconnected from the websocket server");
@@ -189,24 +192,34 @@ void motorUpdateDirection(String newMotorDirection) {
   }
 }
 
-void motorUpdateStatus(bool newMotorStatus) {
-  if(newMotorStatus) {
-    Serial.println("[cmd][motor] Motor turned on");
-    digitalWrite(motorEN1, HIGH);
-    ledcWrite(pwmChannel, motorSpeed);
-  } else {
-    Serial.println("[cmd][motor] Motor turned off");
-    digitalWrite(motorEN1, LOW);
-    ledcWrite(pwmChannel, 0);
-  }
-}
-
 void motorUpdateSpeed(int newMotorSpeed) {
   Serial.print("[cmd][motor] Motor speed is ");
   Serial.println(newMotorSpeed);
   // Add preferences update to save state to memory
   if(!motorStatus) return;
-  ledcWrite(pwmChannel, newMotorSpeed);
+  // Fix when the newMotorSpeed is higher/lower than the pwmSpeedMax/pwmSpeedMin
+  if(newMotorSpeed > pwmSpeedMax) newMotorSpeed = pwmSpeedMax;
+  if(newMotorSpeed < pwmSpeedMin) newMotorSpeed = pwmSpeedMin;
+  // This fixes the issue where the motor is not spinning
+  // when starting off from a low speed
+  ledcWrite(pwmChannel, 200);
+  delay(10);
+  // Mapped the range of the speed to the range of the PWM resolution and Duty Cycle
+  int newMotorSpeedMapped = map(newMotorSpeed, pwmSpeedMin, pwmSpeedMax, 170, 255);
+  // Write the new speed to the PWM channel
+  ledcWrite(pwmChannel, newMotorSpeedMapped);
+}
+
+void motorUpdateStatus(bool newMotorStatus) {
+  if(newMotorStatus) {
+    Serial.println("[cmd][motor] Motor turned on");
+    digitalWrite(motorEN1, HIGH);
+    motorUpdateSpeed(motorSpeed);
+  } else {
+    Serial.println("[cmd][motor] Motor turned off");
+    digitalWrite(motorEN1, LOW);
+    ledcWrite(pwmChannel, 0);
+  }
 }
 
 void command(String &command) {
@@ -282,7 +295,7 @@ void updateSetting(String setting, String value) {
   }
   // End
   preferences.end();
-  sendSettings();
+  wsSendSettings();
 }
 
 void loadSettings() {
@@ -322,11 +335,11 @@ void setup() {
   Serial.begin(115200);
   Serial.println("[info][system] Initializing all systems...");
   initMotor();
+  loadSettings();
   initWiFi();
   initWebSocket();
   initDone();
-  loadSettings();
-  sendSettings();
+  wsSendSettings();
 }
 
 void loop() {
@@ -364,7 +377,7 @@ void loop() {
       else if(type == "request") {
         // Send settings
         if(request == "settings") {
-          sendSettings();
+          wsSendSettings();
         }
       }
     }
