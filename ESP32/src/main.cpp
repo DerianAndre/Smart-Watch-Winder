@@ -34,6 +34,9 @@ int    motorSpeedMax = pwmSpeedMax;
 int    turnsCycles;
 int    turnsPerDay;
 int    turnsPerHour;
+// TODO: Manage turns cycles
+int    currentTurn;
+int    currentCycle; 
 
 // Functions
 void wsOnMessage(String &webSocketData) {
@@ -66,6 +69,8 @@ void wsSendSettings() {
   jsonSettings["type"]           = "settings";
   jsonSettings["id"]             = WS_ID;
   jsonSettings["controlMode"]    = controlMode;
+  jsonSettings["currentTurn"]   = currentTurn;
+  jsonSettings["currentCycle"]   = currentCycle;
   jsonSettings["motorDirection"] = motorDirection;
   jsonSettings["motorSpeed"]     = motorSpeed;
   jsonSettings["motorSpeedMin"]  = motorSpeedMin;
@@ -302,8 +307,10 @@ void loadSettings() {
   preferences.begin("settings", false);
   Serial.println("[info][settings] Loading settings...");
   controlMode=    preferences.getString("controlMode", defaultControlMode);
-  motorDirection= preferences.getString("motorDirection", defaultMotorDirection);
+  currentCycle=   preferences.getInt("currentCycle", 0);
+  currentTurn=   preferences.getInt("currentTurn", 0);
   motorStatus=    preferences.getBool("motorStatus", defaultMotorStatus);
+  motorDirection= preferences.getString("motorDirection", defaultMotorDirection);
   motorSpeed=     preferences.getInt("motorSpeed", defaultMotorSpeed);
   turnsCycles=    preferences.getInt("turnsCycles", defaultTurnsCycles);
   turnsPerDay=    preferences.getInt("turnsPerDay", defaultTurnsPerDay);
@@ -312,10 +319,14 @@ void loadSettings() {
 
   Serial.print("[info][settings] Control mode: ");
   Serial.println(controlMode);
-  Serial.print("[info][settings] Motor direction: ");
-  Serial.println(motorDirection);
+  Serial.print("[info][settings] Current cycle: ");
+  Serial.println(currentCycle);
+  Serial.print("[info][settings] Current turns: ");
+  Serial.println(currentTurn);
   Serial.print("[info][settings] Motor status: ");
   Serial.println(motorStatus);
+  Serial.print("[info][settings] Motor direction: ");
+  Serial.println(motorDirection);
   Serial.print("[info][settings] Motor speed: ");
   Serial.println(motorSpeed);
   Serial.print("[info][settings] Turns cycles: ");
